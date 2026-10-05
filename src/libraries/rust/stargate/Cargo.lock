@@ -1860,11 +1860,19 @@ dependencies = [
  "async-stream",
  "axum",
  "clap",
+ "mock-engine",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "mock-engine"
+version = "0.15.2"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
