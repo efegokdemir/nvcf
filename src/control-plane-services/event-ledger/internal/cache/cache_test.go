@@ -100,7 +100,7 @@ func newTestHandler(t *testing.T) *CachingDBHandler {
 func newTestHandlerWith(t *testing.T, cfg Config) (*CachingDBHandler, *flushRecorder) {
 	t.Helper()
 	rec := &flushRecorder{}
-	h, err := NewCachingDBHandler(&fakeDB{}, cfg, rec.flush)
+	h, err := NewCachingDBHandler(&fakeDB{}, cfg, rec.flush, noopMeter())
 	require.NoError(t, err)
 	return h, rec
 }
@@ -483,14 +483,14 @@ func TestInactiveTTL_IsFlushIntervalPlusTenPercent(t *testing.T) {
 }
 
 func TestNewCachingDBHandler_NilInnerHandlerFails(t *testing.T) {
-	h, err := NewCachingDBHandler(nil, testConfig(), noopFlush)
+	h, err := NewCachingDBHandler(nil, testConfig(), noopFlush, noopMeter())
 
 	require.ErrorIs(t, err, errNilInnerHandler)
 	assert.Nil(t, h)
 }
 
 func TestNewCachingDBHandler_NilFlushFails(t *testing.T) {
-	h, err := NewCachingDBHandler(&fakeDB{}, testConfig(), nil)
+	h, err := NewCachingDBHandler(&fakeDB{}, testConfig(), nil, noopMeter())
 
 	require.ErrorIs(t, err, errNilFlush)
 	assert.Nil(t, h)
@@ -499,7 +499,7 @@ func TestNewCachingDBHandler_NilFlushFails(t *testing.T) {
 func TestNewCachingDBHandler_KeepsInnerHandler(t *testing.T) {
 	inner := &fakeDB{}
 
-	h, err := NewCachingDBHandler(inner, testConfig(), noopFlush)
+	h, err := NewCachingDBHandler(inner, testConfig(), noopFlush, noopMeter())
 
 	require.NoError(t, err)
 	assert.Same(t, inner, h.DBHandlerV2)
@@ -508,7 +508,7 @@ func TestNewCachingDBHandler_KeepsInnerHandler(t *testing.T) {
 func TestNewCachingDBHandler_KeepsConfig(t *testing.T) {
 	cfg := Config{MaxSize: 10, FlushInterval: 5 * time.Second}
 
-	h, err := NewCachingDBHandler(&fakeDB{}, cfg, noopFlush)
+	h, err := NewCachingDBHandler(&fakeDB{}, cfg, noopFlush, noopMeter())
 
 	require.NoError(t, err)
 	assert.Equal(t, cfg, h.cfg)
@@ -528,7 +528,7 @@ func TestNewCachingDBHandler_RejectsNonPositiveConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := NewCachingDBHandler(&fakeDB{}, tt.cfg, noopFlush)
+			h, err := NewCachingDBHandler(&fakeDB{}, tt.cfg, noopFlush, noopMeter())
 
 			require.ErrorIs(t, err, tt.wantErr)
 			assert.Nil(t, h)
@@ -675,7 +675,7 @@ func TestProcessEvent_EvictionFlushRunsWithoutTheLock(t *testing.T) {
 		entryWasGone = !inCache
 		return nil
 	}
-	h, err := NewCachingDBHandler(&fakeDB{}, evictionConfig(1), flush)
+	h, err := NewCachingDBHandler(&fakeDB{}, evictionConfig(1), flush, noopMeter())
 	require.NoError(t, err)
 	h.processEvent(keyN(1), event{timestamp: at(1)}, at(1))
 	h.processEvent(keyN(1), event{timestamp: at(2)}, at(2))
@@ -899,7 +899,7 @@ func TestProcessEvent_NewerEventDuringEvictionFlushIsAMiss(t *testing.T) {
 		<-releaseFlush
 		return nil
 	}
-	handler, err := NewCachingDBHandler(&fakeDB{}, evictionConfig(1), flush)
+	handler, err := NewCachingDBHandler(&fakeDB{}, evictionConfig(1), flush, noopMeter())
 	require.NoError(t, err)
 	handler.processEvent(keyN(1), event{timestamp: at(1), details: json.RawMessage(`{"progress":1}`)}, at(1))
 	handler.processEvent(keyN(1), event{timestamp: at(2), details: json.RawMessage(`{"progress":2}`)}, at(2))
